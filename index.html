@@ -1,0 +1,382 @@
+<?php
+/* ============================================================
+ *  مجموعه فرم‌های آنلاین مربیگری بدنسازی (SAEID CLUB)
+ *  نقطه ورود اصلی — معماری ماژولار و تفکیک‌شده
+ * ============================================================ */
+
+require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/functions.php';
+require_once __DIR__ . '/handlers.php';
+
+ob_start();
+?>
+<!DOCTYPE html>
+<html lang="<?= e($lang) ?>" dir="<?= $isEn ? 'ltr' : 'rtl' ?>">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?= $isPanel ? 'پنل مربی — پاسخ‌های ثبت‌شده' : ($slug ? e($forms[$slug]['title']) . ' | مربیگری بدنسازی' : 'فرم‌های همکاری آنلاین | مربیگری بدنسازی') ?></title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        body { font-family: 'Vazirmatn', sans-serif; }
+        ::selection { background:#facc15; color:#000; }
+        @keyframes rise { from { opacity:0; transform:translateY(24px);} to { opacity:1; transform:translateY(0);} }
+        .rise { animation: rise .7s cubic-bezier(.22,1,.36,1) both; }
+        .rise-1 { animation-delay:.05s } .rise-2 { animation-delay:.15s }
+        .rise-3 { animation-delay:.25s } .rise-4 { animation-delay:.35s }
+        .fa-num { font-variant-numeric: tabular-nums; }
+        ::-webkit-scrollbar { width:10px } ::-webkit-scrollbar-track { background:#09090b }
+        ::-webkit-scrollbar-thumb { background:#3f3f46; border-radius:99px } ::-webkit-scrollbar-thumb:hover { background:#facc15 }
+
+        main > section { position:relative; }
+        main > section::before { content:''; position:absolute; top:0; right:2.25rem; left:2.25rem; height:1px; background:linear-gradient(to left,transparent,rgba(250,204,21,.35),transparent); pointer-events:none; }
+
+        .step-rail { position:fixed; right:1.1rem; top:50%; transform:translateY(-50%); z-index:40; display:none; }
+        @media (min-width:1280px){ .step-rail{display:flex;} }
+        .step-dot { width:10px; height:10px; border-radius:99px; background:#3f3f46; transition:all .25s; cursor:pointer; border:0; padding:0; position:relative; }
+        .step-dot.active { background:#facc15; box-shadow:0 0 0 5px rgba(250,204,21,.15); transform:scale(1.2); }
+        .step-dot .tip { position:absolute; right:1.5rem; top:50%; transform:translateY(-50%); white-space:nowrap; background:#18181b; border:1px solid #3f3f46; color:#e4e4e7; font-size:11px; padding:4px 10px; border-radius:10px; opacity:0; pointer-events:none; transition:opacity .2s; }
+        .step-dot:hover .tip { opacity:1; }
+
+        @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 50%{transform:translateX(6px)} 75%{transform:translateX(-4px)} }
+        .shake { animation:shake .4s ease both; }
+        @keyframes pulseRing { 0%{box-shadow:0 0 0 0 rgba(250,204,21,.35)} 100%{box-shadow:0 0 0 24px rgba(250,204,21,0)} }
+        .pulse-ring { animation:pulseRing 1.6s ease-out infinite; }
+
+        .watermark { position:absolute; inset:0; display:grid; place-items:center; font-weight:800; font-size:clamp(8rem,26vw,15rem); color:transparent; -webkit-text-stroke:1.5px rgba(250,204,21,.08); user-select:none; pointer-events:none; line-height:1; }
+        .opt-form span.text-yellow-400 { display:none !important; }
+        input[type="date"] { color-scheme: dark; }
+        input[type=range] { -webkit-appearance:none; height:6px; border-radius:99px; background:linear-gradient(to left,#a3e635,#facc15,#ef4444); outline:none; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:22px; height:22px; border-radius:50%; background:#fff; border:3px solid #facc15; box-shadow:0 2px 8px rgba(0,0,0,.5); cursor:pointer; }
+    </style>
+</head>
+
+<body class="min-h-screen bg-zinc-950 text-zinc-200 relative overflow-x-hidden">
+
+    <div id="progressBar" class="fixed top-0 right-0 h-1 bg-gradient-to-l from-yellow-300 via-amber-400 to-yellow-500 z-50 transition-[width] duration-150" style="width:0%"></div>
+
+    <!-- ══════════ نوار ناوبری بالا ══════════ -->
+    <nav class="fixed top-0 inset-x-0 z-40 h-14 bg-zinc-950/75 backdrop-blur-xl border-b border-zinc-800/80">
+        <div class="max-w-5xl mx-auto h-full px-4 sm:px-6 flex items-center gap-3">
+            <a href="<?= e($homeUrl) ?>" class="flex items-center gap-2.5 group shrink-0">
+                <span class="w-8 h-8 rounded-lg bg-gradient-to-br from-yellow-300 to-amber-500 text-black grid place-items-center shadow-md shadow-yellow-500/30 group-hover:rotate-6 transition-transform">
+                    <i data-lucide="dumbbell" class="w-4 h-4"></i>
+                </span>
+                <span class="leading-tight">
+                    <span class="block text-[13px] font-extrabold tracking-wide text-zinc-100 group-hover:text-yellow-300 transition">SAEID CLUB</span>
+                    <span class="block text-[10px] text-zinc-500">مربیگری آنلاین</span>
+                </span>
+            </a>
+            <div class="ms-auto flex items-center gap-2">
+                <?php if ($isPanel && $isAdmin): ?>
+                <a href="<?= e($panelUrl . '&logout=1') ?>"
+                   class="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold text-rose-400 hover:text-rose-300 ring-1 ring-rose-500/20 hover:ring-rose-400/40 transition">
+                    <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+                    خروج
+                </a>
+                <?php else: ?>
+                <a href="<?= e($panelUrl) ?>"
+                   class="inline-flex items-center gap-1.5 rounded-lg bg-yellow-400 px-3.5 py-2 text-xs font-extrabold text-black shadow-md shadow-yellow-500/25 hover:bg-yellow-300 hover:-translate-y-px transition">
+                    <i data-lucide="log-in" class="w-3.5 h-3.5"></i>
+                    ورود مدیر
+                </a>
+                <?php endif; ?>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ══════════ تغییر زبان (گوشه پایین چپ) ══════════ -->
+    <div class="fixed bottom-5 left-5 z-40 flex items-center gap-1 rounded-full bg-zinc-900/90 backdrop-blur ring-1 ring-zinc-700 p-1 shadow-xl shadow-black/50">
+        <i data-lucide="languages" class="w-4 h-4 text-yellow-400 mx-1.5"></i>
+        <a href="<?= e(langUrl('fa')) ?>"
+           class="px-3 py-1.5 rounded-full text-xs font-bold transition <?= !$isEn ? 'bg-yellow-400 text-black shadow-lg shadow-yellow-500/25' : 'text-zinc-400 hover:text-yellow-300' ?>">فارسی</a>
+        <a href="<?= e(langUrl('en')) ?>"
+           class="px-3 py-1.5 rounded-full text-xs font-bold transition <?= $isEn ? 'bg-yellow-400 text-black shadow-lg shadow-yellow-500/25' : 'text-zinc-400 hover:text-yellow-300' ?>">EN</a>
+    </div>
+
+    <div class="pointer-events-none fixed -top-32 -right-32 w-96 h-96 rounded-full bg-yellow-500/10 blur-3xl"></div>
+    <div class="pointer-events-none fixed -bottom-40 -left-32 w-[28rem] h-[28rem] rounded-full bg-amber-600/10 blur-3xl"></div>
+    <div class="pointer-events-none fixed top-1/3 left-1/4 w-72 h-72 rounded-full bg-yellow-400/5 blur-3xl"></div>
+    <div class="pointer-events-none fixed inset-0 opacity-[0.035]" style="background-image:linear-gradient(#facc15 1px,transparent 1px),linear-gradient(90deg,#facc15 1px,transparent 1px);background-size:56px 56px"></div>
+
+    <main class="relative max-w-3xl mx-auto px-4 sm:px-6 pt-24 sm:pt-28 pb-28">
+
+    <?php if ($isPanel): ?>
+        <?php require __DIR__ . '/admin.php'; ?>
+    <?php elseif ($slug !== null): ?>
+        <?php require __DIR__ . '/forms.php'; ?>
+    <?php else: ?>
+        <!-- ══════════ صفحه ۴۰۴ لینک پیدا نشد ══════════ -->
+        <section class="rise rise-2 min-h-[75vh] grid place-items-center relative overflow-hidden">
+            <span class="watermark">404</span>
+            <div class="relative z-10 text-center max-w-md mx-auto px-4">
+                <div class="mx-auto w-24 h-24 rounded-3xl bg-zinc-900 ring-1 ring-zinc-800 grid place-items-center shadow-2xl shadow-black/50">
+                    <i data-lucide="link-2-off" class="w-11 h-11 text-yellow-400"></i>
+                </div>
+                <h1 class="mt-8 text-3xl sm:text-4xl font-extrabold leading-tight bg-gradient-to-l from-yellow-300 via-amber-400 to-yellow-500 bg-clip-text text-transparent">
+                    لینک شما پیدا نشد
+                </h1>
+                <p class="mt-4 text-zinc-500 leading-8 text-sm sm:text-base">
+                    این آدرس معتبر نیست یا در دسترس شما نیست. برای پر کردن فرم، لطفاً لینک اختصاصی خود را از مربی دریافت کنید.
+                </p>
+                <div class="mt-8 rounded-2xl bg-zinc-900/70 ring-1 ring-zinc-800 p-5">
+                    <p class="text-xs text-zinc-500">در صورت نیاز با ما در تماس باشید:</p>
+                    <a href="tel:+989225830811" dir="ltr"
+                       class="mt-2 inline-flex items-center gap-2 font-mono font-bold text-yellow-300 hover:text-yellow-200 transition fa-num text-lg">
+                        <i data-lucide="phone" class="w-4 h-4"></i>
+                        0922-583-0811
+                    </a>
+                </div>
+            </div>
+        </section>
+    <?php endif; ?>
+    </main>
+
+    <script>
+        lucide.createIcons();
+
+        // ── فرم‌های اختیاری (حذف required) ──
+        document.querySelectorAll('.opt-form [required]').forEach(el => el.removeAttribute('required'));
+
+        // ── شمارنده حروف ──
+        const goal = document.getElementById('threeMonthGoal');
+        const counter = document.getElementById('charCount');
+        if (goal && counter) {
+            const update = () => counter.textContent = goal.value.length.toLocaleString('en-US');
+            goal.addEventListener('input', update);
+            update();
+        }
+
+        // ── اسلایدر شدت درد فرم ۱ ──
+        const painLevel = document.getElementById('painLevel');
+        const painValue = document.getElementById('painValue');
+        if (painLevel && painValue) {
+            const show = () => painValue.textContent = (+painLevel.value).toLocaleString('en-US');
+            painLevel.addEventListener('input', show);
+            show();
+        }
+
+        // ── نمایش شرطی جزئیات درد فرم ۱ ──
+        const painBox = document.getElementById('painDetails');
+        if (painBox) {
+            document.querySelectorAll('input[name="hasPain"]').forEach(radio => {
+                radio.addEventListener('change', () => {
+                    const yes = document.querySelector('input[name="hasPain"]:checked')?.value === 'بله';
+                    painBox.classList.toggle('hidden', !yes);
+                });
+            });
+        }
+
+        // ── نوار پیشرفت اسکرول ──
+        const bar = document.getElementById('progressBar');
+        addEventListener('scroll', () => {
+            const h = document.documentElement;
+            const p = h.scrollTop / (h.scrollHeight - h.clientHeight) * 100;
+            bar.style.width = p + '%';
+        }, { passive: true });
+
+        // ── اعتبارسنجی چک‌باکس‌ها و ارسال فرم ──
+        const form = document.getElementById('surveyForm');
+        const btn = document.getElementById('submitBtn');
+        const btnText = document.getElementById('btnText');
+        const requiredGroups = <?= $slug === 'form5' ? '[]' : ($slug === 'form4' ? json_encode([
+            ['name' => 'orgGoals[]',  'msg' => 'لطفاً حداقل یک هدف اصلی را انتخاب کنید.'],
+            ['name' => 'sports4[]',   'msg' => 'لطفاً حداقل یک نوع ورزش یا «هیچ‌کدام» را انتخاب کنید.'],
+            ['name' => 'diseases4[]', 'msg' => 'در بخش بیماری‌ها حداقل یک مورد یا «هیچ‌کدام» را انتخاب کنید.'],
+        ], JSON_UNESCAPED_UNICODE) : ($slug === 'form3' ? json_encode([
+            ['name' => 'reasons[]', 'msg' => 'لطفاً حداقل یک دلیل برای ادامه همکاری انتخاب کنید.'],
+        ], JSON_UNESCAPED_UNICODE) : ($slug === 'form2' ? json_encode([
+            ['name' => 'goals2[]',       'msg' => 'لطفاً حداقل یک هدف اصلی مراجعه را انتخاب کنید.'],
+            ['name' => 'diseases[]',     'msg' => 'در بخش بیماری‌ها حداقل یک مورد (حتی «هیچ‌کدام») را انتخاب کنید.'],
+            ['name' => 'painAreas[]',    'msg' => 'در بخش درد یا آسیب حداقل یک مورد (حتی «ندارم») را انتخاب کنید.'],
+            ['name' => 'difficulties[]', 'msg' => 'در بخش فعالیت‌های دشوار حداقل یک مورد (حتی «هیچ‌کدام») را انتخاب کنید.'],
+            ['name' => 'services[]',     'msg' => 'لطفاً حداقل یک خدمت مورد نظر را انتخاب کنید.'],
+        ], JSON_UNESCAPED_UNICODE) : json_encode([
+            ['name' => 'trainPlace[]',     'msg' => 'لطفاً حداقل یک محل تمرین را انتخاب کنید.'],
+            ['name' => 'goals[]',          'msg' => 'لطفاً حداقل یک هدف اصلی را انتخاب کنید.'],
+            ['name' => 'medicalHistory[]', 'msg' => 'لطفاً در بخش سابقه، حداقل یک مورد (حتی «هیچ‌کدام») را انتخاب کنید.'],
+        ], JSON_UNESCAPED_UNICODE)))) ?>;
+
+        if (form && btn) {
+            form.addEventListener('submit', (ev) => {
+                for (const g of requiredGroups) {
+                    if (!form.querySelector(`input[name="${g.name}"]:checked`)) {
+                        ev.preventDefault();
+                        alert(g.msg);
+                        form.querySelector(`input[name="${g.name}"]`)?.closest('fieldset')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        return;
+                    }
+                }
+                const selectedOrgGoals = form.querySelectorAll('input[name="orgGoals[]"]:checked');
+                if (selectedOrgGoals.length > 3) {
+                    ev.preventDefault();
+                    alert('حداکثر سه هدف اصلی قابل انتخاب است.');
+                    return;
+                }
+                const hasPain4 = form.querySelector('input[name="hasPain4"]:checked')?.value === 'بله';
+                if (hasPain4 && !form.querySelector('input[name="painAreas4[]"]:checked')) {
+                    ev.preventDefault();
+                    alert('لطفاً حداقل یک محل درد را انتخاب کنید.');
+                    document.getElementById('painDetails4')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    return;
+                }
+                btn.disabled = true;
+                btn.classList.add('opacity-70', 'cursor-wait');
+                btnText.textContent = 'در حال ساخت فایل و ذخیره…';
+            });
+        }
+
+        // ── گزینه انحصاری («هیچ‌کدام» / «ندارم») ──
+        function exclusiveOption(groupName, exclusiveValue) {
+            const boxes = document.querySelectorAll(`input[name="${groupName}"]`);
+            const none  = document.querySelector(`input[name="${groupName}"][value="${exclusiveValue}"]`);
+            if (!none) return;
+            boxes.forEach(box => {
+                box.addEventListener('change', () => {
+                    if (box === none && none.checked) {
+                        boxes.forEach(b => { if (b !== none) b.checked = false; });
+                    } else if (box !== none && box.checked) {
+                        none.checked = false;
+                    }
+                    document.dispatchEvent(new CustomEvent('group-changed', { detail: groupName }));
+                });
+            });
+        }
+        exclusiveOption('medicalHistory[]', 'هیچ‌کدام');
+        exclusiveOption('diseases[]',       'هیچ‌کدام');
+        exclusiveOption('painAreas[]',      'ندارم');
+        exclusiveOption('difficulties[]',   'هیچ‌کدام');
+        exclusiveOption('sports4[]',        'هیچ‌کدام');
+        exclusiveOption('diseases4[]',      'هیچ‌کدام');
+
+        // ── به‌روزرسانی زنده تمام اسلایدرها ──
+        [
+            ['stressLvl', 'stressValue'], ['water', 'waterValue'], ['fruits', 'fruitsValue'],
+            ['progress', 'progressValue'], ['npsScore', 'npsValue'],
+            ['painLevel4', 'painLevel4Value'], ['stressLevel4', 'stressLevel4Value'],
+            ['satOverall', 'satOverallValue'], ['satCoach', 'satCoachValue'], ['satEquip', 'satEquipValue'],
+            ['satClean', 'satCleanValue'], ['satRenew', 'satRenewValue'], ['satNps', 'satNpsValue'],
+        ].forEach(([id, out]) => {
+            const el = document.getElementById(id), lbl = document.getElementById(out);
+            if (el && lbl) {
+                const upd = () => lbl.textContent = (+el.value).toLocaleString('en-US');
+                el.addEventListener('input', upd); upd();
+            }
+        });
+
+        document.querySelectorAll('.quality-range').forEach(el => {
+            const lbl = document.getElementById(el.dataset.out);
+            if (!lbl) return;
+            const upd = () => lbl.textContent = (+el.value).toLocaleString('en-US');
+            el.addEventListener('input', upd); upd();
+        });
+
+        // ── شرطی فرم ۲: باز شدن درد ──
+        const painBox2 = document.getElementById('painDetails2');
+        if (painBox2) {
+            const syncPain = () => {
+                const checked = [...document.querySelectorAll('input[name="painAreas[]"]:checked')];
+                const hasPain = checked.length > 0 && !checked.some(c => c.value === 'ندارم');
+                painBox2.classList.toggle('hidden', !hasPain);
+                document.getElementById('painStart')?.toggleAttribute('required', hasPain);
+                document.querySelectorAll('input[name="treatment"]').forEach((r, i) => {
+                    if (i === 0) r.toggleAttribute('required', hasPain);
+                });
+            };
+            document.querySelectorAll('input[name="painAreas[]"]').forEach(b => b.addEventListener('change', syncPain));
+            document.addEventListener('group-changed', syncPain);
+            syncPain();
+        }
+
+        // ── شرطی فرم ۴: باز شدن درد ──
+        const painBox4 = document.getElementById('painDetails4');
+        if (painBox4) {
+            const syncPain4 = () => {
+                const hasPain = document.querySelector('input[name="hasPain4"]:checked')?.value === 'بله';
+                painBox4.classList.toggle('hidden', !hasPain);
+            };
+            document.querySelectorAll('input[name="hasPain4"]').forEach(radio => radio.addEventListener('change', syncPain4));
+            syncPain4();
+        }
+
+        // ── محدودیت ۳ هدف فرم ۴ ──
+        const orgGoalBoxes = document.querySelectorAll('input[name="orgGoals[]"]');
+        const orgGoalsHint = document.getElementById('orgGoalsHint');
+        if (orgGoalBoxes.length) {
+            const updateOrgGoals = (changedBox = null) => {
+                let selected = document.querySelectorAll('input[name="orgGoals[]"]:checked');
+                if (selected.length > 3 && changedBox) {
+                    changedBox.checked = false;
+                    alert('حداکثر سه هدف اصلی قابل انتخاب است.');
+                    selected = document.querySelectorAll('input[name="orgGoals[]"]:checked');
+                }
+                if (orgGoalsHint) {
+                    orgGoalsHint.textContent = `${selected.length.toLocaleString('en-US')} از ۳ انتخاب شده`;
+                }
+            };
+            orgGoalBoxes.forEach(box => box.addEventListener('change', () => updateOrgGoals(box)));
+            updateOrgGoals();
+        }
+
+        // ── ریل ناوبری مراحل فرم ──
+        if (form) {
+            const sections = [...form.querySelectorAll(':scope > section')];
+            if (sections.length > 1) {
+                const rail = document.createElement('div');
+                rail.className = 'step-rail flex flex-col items-center gap-3';
+                rail.setAttribute('aria-label', 'مراحل فرم');
+                const dots = sections.map(sec => {
+                    const d = document.createElement('button');
+                    d.type = 'button';
+                    d.className = 'step-dot';
+                    const title = sec.querySelector('h2')?.textContent.trim() ?? '';
+                    if (title) {
+                        const tip = document.createElement('span');
+                        tip.className = 'tip';
+                        tip.textContent = title;
+                        d.appendChild(tip);
+                    }
+                    d.addEventListener('click', () => sec.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+                    rail.appendChild(d);
+                    return d;
+                });
+                document.body.appendChild(rail);
+                const syncSteps = () => {
+                    const mid = innerHeight * .4;
+                    let best = 0, dist = Infinity;
+                    sections.forEach((s, i) => {
+                        const d = Math.abs(s.getBoundingClientRect().top - mid);
+                        if (d < dist) { dist = d; best = i; }
+                    });
+                    dots.forEach((d, i) => d.classList.toggle('active', i === best));
+                };
+                addEventListener('scroll', syncSteps, { passive: true });
+                syncSteps();
+            }
+        }
+
+        // ── جستجو در پنل مربی ──
+        const panelSearch = document.getElementById('panelSearch');
+        if (panelSearch) {
+            panelSearch.addEventListener('input', () => {
+                const q = panelSearch.value.trim();
+                document.querySelectorAll('.detail-row').forEach(r => r.classList.add('hidden'));
+                document.querySelectorAll('[data-row="sub"]').forEach(row => {
+                    const name = row.getAttribute('data-name') || '';
+                    row.classList.toggle('hidden', q !== '' && !name.includes(q));
+                });
+            });
+        }
+    </script>
+</body>
+</html>
+<?php
+$output = ob_get_clean();
+$output = $isEn ? translatePage($output) : $output;
+echo localizeDigits($output);
+?>
